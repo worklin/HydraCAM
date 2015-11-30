@@ -1,11 +1,11 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 2013
-VisualStudioVersion = 12.0.21005.1
+# Visual Studio Express 14 for Windows Desktop
+VisualStudioVersion = 14.0.23107.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HydraCAM", "HydraCAM\HydraCAM.csproj", "{787D2B2A-359B-4098-B0A6-F31E068E00CD}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "System.Windows.Forms.Ribbon35", "System.Windows.Forms.Ribbon\System.Windows.Forms.Ribbon35.csproj", "{46A18A55-5AE8-49CE-91CD-C7421B642E7E}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "System.Windows.Forms.Ribbon45", "System.Windows.Forms.Ribbon\System.Windows.Forms.Ribbon45.csproj", "{46A18A55-5AE8-49CE-91CD-C7421B642E7E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
