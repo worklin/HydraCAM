@@ -66,7 +66,6 @@ void Config_StoreSettings()
 #endif //EEPROM_SETTINGS
 
 
-#ifndef DISABLE_M503
 void Config_LaserSettings()
 {  // Always have this function, even with EEPROM_SETTINGS disabled, the current values will be shown
     SERIAL_ECHO_START;

@@ -55,7 +55,6 @@
 #include "planner.h"
 #include "stepper.h"
 #include "temperature.h"
-#include "ultralcd.h"
 #include "language.h"
 
 //===========================================================================
@@ -540,7 +539,6 @@ void plan_buffer_line(const float &x, const float &y, float feed_rate)
   {
     manage_heater(); 
     manage_inactivity(); 
-    lcd_update();
   }
 
   // The target position of the tool in absolute steps
