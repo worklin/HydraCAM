@@ -31,6 +31,12 @@
 #define PS_ON_PIN          12
 #define KILL_PIN           -1
 
+#define X_MS1_PIN -1
+#define X_MS2_PIN -1
+#define Y_MS1_PIN -1
+#define Y_MS2_PIN -1
+
+
 #ifndef KNOWN_BOARD
 #error Unknown MOTHERBOARD value in configuration.h
 #endif

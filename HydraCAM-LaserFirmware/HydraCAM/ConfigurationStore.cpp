@@ -48,13 +48,10 @@ void Config_StoreSettings()
   EEPROM_WRITE_VAR(i,max_feedrate);  
   EEPROM_WRITE_VAR(i,max_acceleration_units_per_sq_second);
   EEPROM_WRITE_VAR(i,acceleration);
-  EEPROM_WRITE_VAR(i,retract_acceleration);
   EEPROM_WRITE_VAR(i,minimumfeedrate);
   EEPROM_WRITE_VAR(i,mintravelfeedrate);
   EEPROM_WRITE_VAR(i,minsegmenttime);
   EEPROM_WRITE_VAR(i,max_xy_jerk);
-  EEPROM_WRITE_VAR(i,max_z_jerk);
-  EEPROM_WRITE_VAR(i,max_e_jerk);
   EEPROM_WRITE_VAR(i,add_homing);
  
   char ver2[4]=EEPROM_VERSION;
@@ -93,7 +90,6 @@ void Config_LaserSettings()
     SERIAL_ECHOLNPGM("Acceleration: S=acceleration, T=retract acceleration");
     SERIAL_ECHO_START;
     SERIAL_ECHOPAIR("  M204 S",acceleration ); 
-    SERIAL_ECHOPAIR(" T" ,retract_acceleration);
     SERIAL_ECHOLN("");
 
     SERIAL_ECHO_START;
@@ -111,7 +107,7 @@ void Config_LaserSettings()
     SERIAL_ECHOPAIR("  M206 X",add_homing[X_AXIS] );
     SERIAL_ECHOPAIR(" Y" ,add_homing[Y_AXIS] );
     SERIAL_ECHOLN("");
-
+}
 
 #ifdef EEPROM_SETTINGS
 void Config_RetrieveSettings()
@@ -168,7 +164,6 @@ void Config_ResetDefault()
     reset_acceleration_rates();
     
     acceleration=DEFAULT_ACCELERATION;
-    retract_acceleration=DEFAULT_RETRACT_ACCELERATION;
     minimumfeedrate=DEFAULT_MINIMUMFEEDRATE;
     minsegmenttime=DEFAULT_MINSEGMENTTIME;       
     mintravelfeedrate=DEFAULT_MINTRAVELFEEDRATE;

@@ -25,14 +25,12 @@
 
 // The arc is approximated by generating a huge number of tiny, linear segments. The length of each 
 // segment is configured in settings.mm_per_arc_segment.  
-void mc_arc(float *position, float *target, float *offset, uint8_t axis_0, uint8_t axis_1, 
-  float feed_rate, float radius, uint8_t isclockwise)
+void mc_arc(float *position, float *target, float *offset, uint8_t axis_0, uint8_t axis_1,   float feed_rate, float radius, uint8_t isclockwise)
 {      
   //   int acceleration_manager_was_enabled = plan_is_acceleration_manager_enabled();
   //   plan_set_acceleration_manager_enabled(false); // disable acceleration management for the duration of the arc
   float center_axis0 = position[axis_0] + offset[axis_0];
   float center_axis1 = position[axis_1] + offset[axis_1];
-  float linear_travel = target[axis_linear] - position[axis_linear];
   float r_axis0 = -offset[axis_0];  // Radius vector from center to current location
   float r_axis1 = -offset[axis_1];
   float rt_axis0 = target[axis_0] - center_axis0;
@@ -51,7 +49,7 @@ void mc_arc(float *position, float *target, float *offset, uint8_t axis_0, uint8
   }
   //end fix G03
   
-  float millimeters_of_travel = hypot(angular_travel*radius, fabs(linear_travel));
+  float millimeters_of_travel = angular_travel*radius;
   if (millimeters_of_travel < 0.001) { return; }
   uint16_t segments = floor(millimeters_of_travel/MM_PER_ARC_SEGMENT);
   if(segments == 0) segments = 1;
@@ -63,8 +61,7 @@ void mc_arc(float *position, float *target, float *offset, uint8_t axis_0, uint8
     if (invert_feed_rate) { feed_rate *= segments; }
   */
   float theta_per_segment = angular_travel/segments;
-  float linear_per_segment = linear_travel/segments;
-  
+    
   /* Vector rotation by transformation matrix: r is the original vector, r_T is the rotated vector,
      and phi is the angle of rotation. Based on the solution approach by Jens Geisler.
          r_T = [cos(phi) -sin(phi);
@@ -101,11 +98,6 @@ void mc_arc(float *position, float *target, float *offset, uint8_t axis_0, uint8
   uint16_t i;
   int8_t count = 0;
 
-  // Initialize the linear axis
-  arc_target[axis_linear] = position[axis_linear];
-  
-  // Initialize the extruder axis
-  arc_target[E_AXIS] = position[E_AXIS];
 
   for (i = 1; i<segments; i++) { // Increment (segments-1)
     
@@ -128,15 +120,15 @@ void mc_arc(float *position, float *target, float *offset, uint8_t axis_0, uint8
     // Update arc_target location
     arc_target[axis_0] = center_axis0 + r_axis0;
     arc_target[axis_1] = center_axis1 + r_axis1;
-    arc_target[axis_linear] += linear_per_segment;
-    arc_target[E_AXIS] += extruder_per_segment;
+    
+
 
     clamp_to_software_endstops(arc_target);
-    plan_buffer_line(arc_target[X_AXIS], arc_target[Y_AXIS], arc_target[Z_AXIS], arc_target[E_AXIS], feed_rate, extruder);
+    plan_buffer_line(arc_target[X_AXIS], arc_target[Y_AXIS], feed_rate);
     
   }
   // Ensure last segment arrives at target location.
-  plan_buffer_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], target[E_AXIS], feed_rate, extruder);
+  plan_buffer_line(target[X_AXIS], target[Y_AXIS], feed_rate);
 
   //   plan_set_acceleration_manager_enabled(acceleration_manager_was_enabled);
 }

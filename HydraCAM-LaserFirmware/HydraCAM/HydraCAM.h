@@ -157,15 +157,12 @@ extern float homing_feedrate[];
 extern bool axis_relative_modes[];
 extern int feedmultiply;
 extern float current_position[NUM_AXIS] ;
-extern float add_homing[3];
+extern float add_homing[2];
 extern float min_pos[2];
 extern float max_pos[2];
 extern bool axis_known_position[2];
 
 extern unsigned long starttime;
 extern unsigned long stoptime;
-
-// Handling multiple extruders pins
-extern uint8_t active_extruder;
 
 #endif

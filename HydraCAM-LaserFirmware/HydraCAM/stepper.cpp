@@ -24,9 +24,7 @@
 #include "HydraCAM.h"
 #include "stepper.h"
 #include "planner.h"
-#include "temperature.h"
 #include "language.h"
-#include "cardreader.h"
 #include "speed_lookuptable.h"
 #if defined(DIGIPOTSS_PIN) && DIGIPOTSS_PIN > -1
 #include <SPI.h>
@@ -81,8 +79,8 @@ static bool old_y_max_endstop=false;
 
 static bool check_endstops = true;
 
-volatile long count_position[NUM_AXIS] = { 0, 0, 0, 0};
-volatile signed char count_direction[NUM_AXIS] = { 1, 1, 1, 1};
+volatile long count_position[NUM_AXIS] = { 0, 0};
+volatile signed char count_direction[NUM_AXIS] = { 1, 1};
 
 //===========================================================================
 //=============================functions         ============================
@@ -268,13 +266,7 @@ FORCE_INLINE unsigned short calc_timer(unsigned short step_rate) {
 // Initializes the trapezoid generator from the current block. Called whenever a new
 // block begins.
 FORCE_INLINE void trapezoid_generator_reset() {
-  #ifdef ADVANCE
-    advance = current_block->initial_advance;
-    final_advance = current_block->final_advance;
-    // Do E steps + advance steps
-    e_steps[current_block->active_extruder] += ((advance >>8) - old_advance);
-    old_advance = advance >>8;
-  #endif
+  
   deceleration_time = 0;
   // step_rate to timer interval
   OCR1A_nominal = calc_timer(current_block->nominal_rate);
@@ -311,9 +303,6 @@ ISR(TIMER1_COMPA_vect)
       counter_y = counter_x;
       step_events_completed = 0;
 
-//      #ifdef ADVANCE
-//      e_steps[current_block->active_extruder] = 0;
-//      #endif
     }
     else {
         OCR1A=2000; // 1kHz.
@@ -671,13 +660,11 @@ void st_init()
 void st_synchronize()
 {
     while( blocks_queued()) {
-    manage_heater();
     manage_inactivity();
-    lcd_update();
   }
 }
 
-void st_set_position(const long &x, const long &y, const long &z, const long &e)
+void st_set_position(const long &x, const long &y)
 {
   CRITICAL_SECTION_START;
   count_position[X_AXIS] = x;

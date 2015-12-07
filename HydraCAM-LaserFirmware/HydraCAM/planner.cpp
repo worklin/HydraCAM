@@ -54,7 +54,6 @@
 #include "HydraCAM.h"
 #include "planner.h"
 #include "stepper.h"
-#include "temperature.h"
 #include "language.h"
 
 //===========================================================================
@@ -88,14 +87,6 @@ long position[NUM_AXIS];   //rescaled from extern when axis_steps_per_unit are c
 static float previous_speed[NUM_AXIS]; // Speed of previous path line segment
 static float previous_nominal_speed; // Nominal speed of previous path line segment
 
-#ifdef AUTOTEMP
-float autotemp_max=250;
-float autotemp_min=210;
-float autotemp_factor=0.1;
-bool autotemp_enabled=false;
-#endif
-
-unsigned char g_uc_extruder_last_move[3] = {0,0,0};
 
 //===========================================================================
 //=================semi-private variables, used in inline  functions    =====
@@ -107,19 +98,12 @@ volatile unsigned char block_buffer_tail;           // Index of the block to pro
 //===========================================================================
 //=============================private variables ============================
 //===========================================================================
-#ifdef PREVENT_DANGEROUS_EXTRUDE
-float extrude_min_temp=EXTRUDE_MINTEMP;
-#endif
 #ifdef XY_FREQUENCY_LIMIT
 #define MAX_FREQ_TIME (1000000.0/XY_FREQUENCY_LIMIT)
 // Used for the frequency limit
 static unsigned char old_direction_bits = 0;               // Old direction bits. Used for speed calculations
 static long x_segment_time[3]={MAX_FREQ_TIME + 1,0,0};     // Segment times (in us). Used for speed calculations
 static long y_segment_time[3]={MAX_FREQ_TIME + 1,0,0};
-#endif
-
-#ifdef FILAMENT_SENSOR
- static char meas_sample; //temporary variable to hold filament measurement sample
 #endif
 
 // Returns the index of the next block in the ring buffer
@@ -403,123 +387,25 @@ void plan_init() {
 
 
 
-#ifdef AUTOTEMP
-void getHighESpeed()
-{
-  static float oldt=0;
-  if(!autotemp_enabled){
-    return;
-  }
-  if(degTargetHotend0()+2<autotemp_min) {  //probably temperature set to zero.
-    return; //do nothing
-  }
-
-  float high=0.0;
-  uint8_t block_index = block_buffer_tail;
-
-  while(block_index != block_buffer_head) {
-    if((block_buffer[block_index].steps_x != 0) ||
-      (block_buffer[block_index].steps_y != 0) ||
-      (block_buffer[block_index].steps_z != 0)) {
-      float se=(float(block_buffer[block_index].steps_e)/float(block_buffer[block_index].step_event_count))*block_buffer[block_index].nominal_speed;
-      //se; mm/sec;
-      if(se>high)
-      {
-        high=se;
-      }
-    }
-    block_index = (block_index+1) & (BLOCK_BUFFER_SIZE - 1);
-  }
-
-  float g=autotemp_min+high*autotemp_factor;
-  float t=g;
-  if(t<autotemp_min)
-    t=autotemp_min;
-  if(t>autotemp_max)
-    t=autotemp_max;
-  if(oldt>t)
-  {
-    t=AUTOTEMP_OLDWEIGHT*oldt+(1-AUTOTEMP_OLDWEIGHT)*t;
-  }
-  oldt=t;
-  setTargetHotend0(t);
-}
-#endif
-
 void check_axes_activity()
 {
   unsigned char x_active = 0;
   unsigned char y_active = 0;  
-  unsigned char z_active = 0;
-  unsigned char e_active = 0;
-  unsigned char tail_fan_speed = fanSpeed;
-  #ifdef BARICUDA
-  unsigned char tail_valve_pressure = ValvePressure;
-  unsigned char tail_e_to_p_pressure = EtoPPressure;
-  #endif
   block_t *block;
 
   if(block_buffer_tail != block_buffer_head)
   {
     uint8_t block_index = block_buffer_tail;
-    tail_fan_speed = block_buffer[block_index].fan_speed;
-    #ifdef BARICUDA
-    tail_valve_pressure = block_buffer[block_index].valve_pressure;
-    tail_e_to_p_pressure = block_buffer[block_index].e_to_p_pressure;
-    #endif
     while(block_index != block_buffer_head)
     {
       block = &block_buffer[block_index];
       if(block->steps_x != 0) x_active++;
       if(block->steps_y != 0) y_active++;
-      if(block->steps_z != 0) z_active++;
-      if(block->steps_e != 0) e_active++;
       block_index = (block_index+1) & (BLOCK_BUFFER_SIZE - 1);
     }
   }
   if((DISABLE_X) && (x_active == 0)) disable_x();
   if((DISABLE_Y) && (y_active == 0)) disable_y();
-  if((DISABLE_Z) && (z_active == 0)) disable_z();
-  if((DISABLE_E) && (e_active == 0))
-  {
-    disable_e0();
-    disable_e1();
-    disable_e2(); 
-  }
-#if defined(FAN_PIN) && FAN_PIN > -1
-  #ifdef FAN_KICKSTART_TIME
-    static unsigned long fan_kick_end;
-    if (tail_fan_speed) {
-      if (fan_kick_end == 0) {
-        // Just starting up fan - run at full power.
-        fan_kick_end = millis() + FAN_KICKSTART_TIME;
-        tail_fan_speed = 255;
-      } else if (fan_kick_end > millis())
-        // Fan still spinning up.
-        tail_fan_speed = 255;
-    } else {
-      fan_kick_end = 0;
-    }
-  #endif//FAN_KICKSTART_TIME
-  #ifdef FAN_SOFT_PWM
-  fanSpeedSoftPwm = tail_fan_speed;
-  #else
-  analogWrite(FAN_PIN,tail_fan_speed);
-  #endif//!FAN_SOFT_PWM
-#endif//FAN_PIN > -1
-#ifdef AUTOTEMP
-  getHighESpeed();
-#endif
-
-#ifdef BARICUDA
-  #if defined(HEATER_1_PIN) && HEATER_1_PIN > -1
-      analogWrite(HEATER_1_PIN,tail_valve_pressure);
-  #endif
-
-  #if defined(HEATER_2_PIN) && HEATER_2_PIN > -1
-      analogWrite(HEATER_2_PIN,tail_e_to_p_pressure);
-  #endif
-#endif
 }
 
 
@@ -537,7 +423,6 @@ void plan_buffer_line(const float &x, const float &y, float feed_rate)
   // Rest here until there is room in the buffer.
   while(block_buffer_tail == next_buffer_head)
   {
-    manage_heater(); 
     manage_inactivity(); 
   }
 
@@ -560,10 +445,7 @@ void plan_buffer_line(const float &x, const float &y, float feed_rate)
   // default non-h-bot planning
   block->steps_x = labs(target[X_AXIS]-position[X_AXIS]);
   block->steps_y = labs(target[Y_AXIS]-position[Y_AXIS]);
-  block->steps_e *= volumetric_multiplier[active_extruder];
-  block->steps_e *= extrudemultiply;
-  block->steps_e /= 100;
-  block->step_event_count = max(block->steps_x, max(block->steps_y, max(block->steps_z, block->steps_e)));
+  block->step_event_count = max(block->steps_x, block->steps_y);
 
   // Bail if this is a zero-length block
   if (block->step_event_count <= dropsegments)
@@ -703,7 +585,7 @@ Having the real displacement of the head, we can calculate the total movement le
 
   // Compute and limit the acceleration rate for the trapezoid generator.  
   float steps_per_mm = block->step_event_count/block->millimeters;
-  if(block->steps_x == 0 && block->steps_y == 0 && block->steps_z == 0)
+  if(block->steps_x == 0 && block->steps_y == 0)
   {
     block->acceleration_st = ceil(retract_acceleration * steps_per_mm); // convert to: acceleration steps/sec^2
   }
@@ -762,34 +644,6 @@ Having the real displacement of the head, we can calculate the total movement le
   memcpy(previous_speed, current_speed, sizeof(previous_speed)); // previous_speed[] = current_speed[]
   previous_nominal_speed = block->nominal_speed;
 
-
-#ifdef ADVANCE
-  // Calculate advance rate
-  if((block->steps_e == 0) || (block->steps_x == 0 && block->steps_y == 0 && block->steps_z == 0)) {
-    block->advance_rate = 0;
-    block->advance = 0;
-  }
-  else {
-    long acc_dist = estimate_acceleration_distance(0, block->nominal_rate, block->acceleration_st);
-    float advance = (STEPS_PER_CUBIC_MM_E * EXTRUDER_ADVANCE_K) * 
-      (current_speed[E_AXIS] * current_speed[E_AXIS] * EXTRUSION_AREA * EXTRUSION_AREA)*256;
-    block->advance = advance;
-    if(acc_dist == 0) {
-      block->advance_rate = 0;
-    } 
-    else {
-      block->advance_rate = advance / (float)acc_dist;
-    }
-  }
-  /*
-    SERIAL_ECHO_START;
-   SERIAL_ECHOPGM("advance :");
-   SERIAL_ECHO(block->advance/256.0);
-   SERIAL_ECHOPGM("advance rate :");
-   SERIAL_ECHOLN(block->advance_rate/256.0);
-   */
-#endif // ADVANCE
-
   calculate_trapezoid_for_block(block, block->entry_speed/block->nominal_speed,
   safe_speed/block->nominal_speed);
 
@@ -805,7 +659,7 @@ Having the real displacement of the head, we can calculate the total movement le
 }
 
 
-void plan_set_position(const float &x, const float &y, const float &z, const float &e)
+void plan_set_position(const float &x, const float &y)
 {
 
   position[X_AXIS] = lround(x*axis_steps_per_unit[X_AXIS]);
